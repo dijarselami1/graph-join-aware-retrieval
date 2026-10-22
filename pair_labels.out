@@ -1,0 +1,7 @@
+Total pairs: 10109256
+Positive FK pairs: 795
+Same-database negatives: 135937
+Cross-database unknown: 9972524
+FK records resolved: 797
+FK records unresolved: 3
+Saved labels.npy

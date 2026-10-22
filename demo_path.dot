@@ -1,0 +1,22 @@
+digraph G {
+  rankdir=LR;
+  splines=true;
+  nodesep=0.6;
+  ranksep=0.8;
+
+  node [shape=box, style="rounded,filled", fillcolor="#EAF2FF", color="#4A6FA5", fontname="Helvetica"];
+  edge [color="#555555", fontname="Helvetica"];
+
+  singer [label="Seed table\nconcert_singer.singer", fillcolor="#D9EAFD"];
+  stadium [label="Seed table\nconcert_singer.stadium", fillcolor="#D9EAFD"];
+
+  sic [label="Intermediate table\nconcert_singer.singer_in_concert", fillcolor="#FDECC8"];
+  concert [label="Intermediate table\nconcert_singer.concert", fillcolor="#FDECC8"];
+
+  singer -> sic [label="Singer_ID ↔ Singer_ID\nscore = 0.9206", penwidth=2];
+  sic -> concert [label="concert_ID ↔ concert_ID\nscore = 0.9866", penwidth=2];
+  concert -> stadium [label="Stadium_ID ↔ Stadium_ID\nscore = 0.9507", penwidth=2];
+
+  lab [shape=note, fillcolor="#FFFFFF", color="#888888",
+       label="Path confidence = 0.8635\nGraph recovered the bridge tables\nsinger_in_concert and concert"];
+}

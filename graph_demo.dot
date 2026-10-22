@@ -1,0 +1,27 @@
+graph G {
+rankdir=LR;
+graph [pad="0.4", nodesep="0.55", ranksep="0.9"];
+node [shape=box, style="rounded,filled", fontname="Helvetica"];
+edge [fontname="Helvetica"];
+
+"singer.singer" [label="singer", fillcolor="#F2F2F2", color="#AAAAAA"];
+"concert_singer.singer" [label="SEED\nsinger", fillcolor="#DDF3E4", color="#2E7D32", penwidth=2.5];
+"game_injury.game" [label="game", fillcolor="#F2F2F2", color="#AAAAAA"];
+"concert_singer.concert" [label="INTERMEDIATE\nconcert", fillcolor="#FFF0CC", color="#D48B00", penwidth=2.5];
+"music_4.music_festival" [label="music_festival", fillcolor="#F2F2F2", color="#AAAAAA"];
+"concert_singer.singer_in_concert" [label="INTERMEDIATE\nsinger_in_concert", fillcolor="#FFF0CC", color="#D48B00", penwidth=2.5];
+"concert_singer.stadium" [label="SEED\nstadium", fillcolor="#DDF3E4", color="#2E7D32", penwidth=2.5];
+"riding_club.player_coach" [label="player_coach", fillcolor="#F2F2F2", color="#AAAAAA"];
+
+"concert_singer.concert" -- "concert_singer.singer_in_concert" [label="concert_ID ↔ concert_ID\n0.9866", color="#1565C0", fontcolor="#1565C0", penwidth=4];
+"concert_singer.concert" -- "concert_singer.stadium" [label="Stadium_ID ↔ Stadium_ID\n0.9507", color="#1565C0", fontcolor="#1565C0", penwidth=4];
+"concert_singer.singer" -- "concert_singer.singer_in_concert" [label="Singer_ID ↔ Singer_ID\n0.9206", color="#1565C0", fontcolor="#1565C0", penwidth=4];
+"concert_singer.singer_in_concert" -- "singer.singer" [label="0.962", color="#BBBBBB", fontcolor="#777777", penwidth=1];
+"concert_singer.singer_in_concert" -- "music_4.music_festival" [label="0.695", color="#BBBBBB", fontcolor="#777777", penwidth=1];
+"concert_singer.concert" -- "riding_club.player_coach" [label="0.561", color="#BBBBBB", fontcolor="#777777", penwidth=1];
+"concert_singer.concert" -- "music_4.music_festival" [label="0.551", color="#BBBBBB", fontcolor="#777777", penwidth=1];
+"concert_singer.stadium" -- "game_injury.game" [label="0.995", color="#BBBBBB", fontcolor="#777777", penwidth=1];
+
+labelloc="t";
+label="Graph-Based Path Inference Demo\nSeeds: singer + stadium | Recovered: singer_in_concert + concert | Path confidence: 0.8635";
+}

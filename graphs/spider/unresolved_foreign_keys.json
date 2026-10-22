@@ -1,0 +1,29 @@
+[
+  {
+    "db_id": "baseball_1",
+    "from_table": "fielding_postseason",
+    "from_column": "team_id",
+    "to_table": "player",
+    "to_column": "team_id",
+    "on_update": "NO ACTION",
+    "on_delete": "NO ACTION"
+  },
+  {
+    "db_id": "imdb",
+    "from_table": "tags",
+    "from_column": "kid",
+    "to_table": "keyword",
+    "to_column": "kid",
+    "on_update": "NO ACTION",
+    "on_delete": "NO ACTION"
+  },
+  {
+    "db_id": "restaurants",
+    "from_table": "LOCATION",
+    "from_column": "RESTAURANT_ID",
+    "to_table": "RESTAURANT",
+    "to_column": "RESTAURANT_ID",
+    "on_update": "NO ACTION",
+    "on_delete": "NO ACTION"
+  }
+]

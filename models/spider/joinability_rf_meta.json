@@ -1,0 +1,16 @@
+{
+  "threshold": 0.5160912733321336,
+  "features": [
+    "embedding_cosine",
+    "column_name_similarity",
+    "table_name_similarity",
+    "value_overlap",
+    "jaccard",
+    "pk_a",
+    "pk_b",
+    "uniqueness_a",
+    "uniqueness_b",
+    "datatype_compatible",
+    "distinct_count_ratio"
+  ]
+}

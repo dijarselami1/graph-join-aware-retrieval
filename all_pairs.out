@@ -1,0 +1,24 @@
+Columns: 4497
+Pairs: 10109256
+Workers: 8
+Computing embedding similarities...
+Computing column-name similarities...
+Computing table-name similarities...
+Building value index...
+Computing value intersections...
+Processed values: 200000
+Processed values: 300000
+Writing pair features...
+Finished column 500/4497
+Finished column 1000/4497
+Finished column 1500/4497
+Finished column 2000/4497
+Finished column 2500/4497
+Finished column 3000/4497
+Finished column 3500/4497
+Finished column 4000/4497
+
+DONE
+Pairs: 10109256
+Feature shape: (10109256, 11)
+Saved to: /scratch/ds7491/graph_project/features/spider/all_pairs
