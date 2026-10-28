@@ -20,3 +20,4 @@ logs/
 graphs/spider/*.csv
 metadata/spider/*.json
 models/spider/*.joblib
+results/
