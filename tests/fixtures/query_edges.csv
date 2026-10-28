@@ -1,0 +1,6 @@
+db_a,table_a,column_a,db_b,table_b,column_b,score
+concert_singer,singer,Singer_ID,concert_singer,singer_in_concert,Singer_ID,0.9
+concert_singer,singer_in_concert,concert_ID,concert_singer,concert,concert_ID,0.9
+concert_singer,concert,Stadium_ID,concert_singer,stadium,Stadium_ID,0.9
+concert_singer,singer,Singer_ID,unrelated,archive,person_id,0.95
+unrelated,archive,venue_id,concert_singer,stadium,Stadium_ID,0.95
