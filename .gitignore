@@ -21,3 +21,5 @@ graphs/spider/*.csv
 metadata/spider/*.json
 models/spider/*.joblib
 results/
+.venv-embeddings/
+models/all-MiniLM-L6-v2/
