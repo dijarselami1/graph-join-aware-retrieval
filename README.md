@@ -194,3 +194,36 @@ and additionally validates candidate membership, completeness and selection.
 **Not verified:** actual MiniLM rankings, live GPT responses, full Spider retrieval
 quality or QA gains. See the experiment log for the distinction between synthetic
 mechanics and future model evaluation.
+
+## Inspecting the higher-similarity Spider distractors
+
+The path representation now defaults to `bridge_roles_v2`, which puts intermediate
+tables and their incoming/outgoing join columns before the full join chain. The
+previous representation is preserved as `--embedding-text-version
+tables_and_joins_v1`. To compare both on the **same** Spider candidates and model:
+
+```bash
+python scripts/query_driven_paths.py \
+  --edges graphs/spider/predicted_table_edges.csv \
+  --question "Which singers performed at each stadium?" \
+  --seed-a concert_singer.singer --seed-b concert_singer.stadium \
+  --max-hops 5 --top-k 8 --compare --ranking embedding \
+  --embedding-model "$EMBEDDING_MODEL" --embedding-ablation \
+  --output results/spider_path_text_ablation.json
+```
+
+After manually checking the full join sequence and identifying the correct
+candidate ID in that output (for example, `P3`), run:
+
+```bash
+python scripts/evaluate_path_ranking.py \
+  --result results/spider_path_text_ablation.json --gold-id P3
+```
+
+Repeat `--gold-id` for multiple acceptable paths. The report shows both embedding
+ranks and any distractor with greater raw cosine, alongside graph, lexical and
+LLM ranks if available. The `--compare`/ablation command makes **no API call**.
+The GPT prompt now asks for hop-by-hop join assessment, but live GPT quality has
+not been measured. Only explicitly adding `--llm` sends a request. Existing
+`query_compare.sbatch` uses the new v2 default; add `--embedding-ablation` to its
+CLI command when a paired comparison is desired.

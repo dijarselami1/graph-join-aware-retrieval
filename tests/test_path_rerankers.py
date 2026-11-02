@@ -14,6 +14,7 @@ import urllib.error
 
 from scripts import query_driven_paths as query
 from scripts import path_rerankers as rerank
+from scripts.evaluate_path_ranking import evaluate
 
 FIXTURE = Path(__file__).parent / 'fixtures/query_edges.csv'
 QUESTION = 'Which singers performed at each stadium?'
@@ -47,12 +48,19 @@ class RerankerTest(unittest.TestCase):
 
     def test_path_representation_excludes_scores_and_database_names(self):
         text = rerank.path_text(self.paths[1])
+        self.assertTrue(text.startswith('Bridge tables: singer in concert'))
+        self.assertIn('incoming column Singer ID; outgoing column concert ID', text)
         self.assertIn('singer in concert', text)
         self.assertIn('concert.concert ID', text)
         self.assertNotIn('concert_singer', text)
         self.assertNotIn('0.9', text)
         self.assertNotIn('P2', text)
         self.assertEqual(text, rerank.path_text(copy.deepcopy(self.paths[1])))
+        old = rerank.path_text(self.paths[1], rerank.LEGACY_PATH_TEXT_VERSION)
+        self.assertTrue(old.startswith('Tables: singer -> singer in concert'))
+        self.assertNotEqual(old, text)
+        with self.assertRaises(ValueError):
+            rerank.path_text(self.paths[1], 'unknown')
 
     def test_cosine_validation(self):
         self.assertEqual(rerank.cosine_similarity([1, 0], [0, 2]), 0)
@@ -127,6 +135,8 @@ class RerankerTest(unittest.TestCase):
                 self.assertNotIn('joinability_score', join)
         self.assertEqual(first['model'], 'gpt-4o-mini')
         self.assertTrue(first['response_format']['json_schema']['strict'])
+        self.assertIn('incoming and outgoing columns', first['messages'][0]['content'])
+        self.assertIn('Names alone cannot prove data overlap', first['messages'][0]['content'])
 
     def test_llm_validation_and_abstention(self):
         for selected in ['P2', 'NONE']:
@@ -201,6 +211,46 @@ class RerankerTest(unittest.TestCase):
             self.assertEqual(data['rankings']['embedding']['path_ids'], ['P2', 'P1'])
             self.assertEqual(data['rankings']['llm']['status'], 'not_requested')
             self.assertEqual(data['candidate_paths'][0]['final_ranking_score'], 0.8645)
+
+    def test_cli_embedding_ablation_preserves_both_texts_and_no_api(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / 'results.json'
+            encoder = FakeEncoder()
+            with patch.object(query, 'LocalSentenceEncoder', return_value=encoder), \
+                 patch.object(query, 'select_with_llm', side_effect=AssertionError('No LLM')):
+                self.run_cli(output, ['--embedding-ablation', '--ranking', 'embedding'])
+            data = json.loads(output.read_text())
+            self.assertEqual(data['parameters']['embedding_text_version'], rerank.PATH_TEXT_VERSION)
+            self.assertEqual(data['embedding_ablation']['selected_text_version'],
+                             rerank.PATH_TEXT_VERSION)
+            self.assertEqual(data['embedding_ablation']['alternate_text_version'],
+                             rerank.LEGACY_PATH_TEXT_VERSION)
+            self.assertEqual(data['rankings']['llm']['status'], 'not_requested')
+            self.assertIn('Bridge tables:', data['candidate_paths'][0]['embedding_text'])
+            self.assertIn('Tables:', data['candidate_paths'][0]['alternate_embedding']['text'])
+            self.assertEqual(len(encoder.texts), 3)
+
+    def test_report_flags_high_cosine_distractor_without_claiming_model_quality(self):
+        data = {'question': QUESTION, 'search_truncated': False,
+                'candidate_paths': [
+                    {'id': 'P1', 'tables': ['db.singer', 'db.bridge', 'db.stadium'],
+                     'graph_score': 0.95, 'embedding_cosine': 0.6, 'embedding_rank': 1},
+                    {'id': 'P2', 'tables': ['db.singer', 'db.distractor', 'db.stadium'],
+                     'graph_score': 0.5, 'embedding_cosine': 0.9, 'embedding_rank': 2}],
+                'rankings': {method: {'status': 'ok', 'path_ids': ['P1', 'P2']}
+                             for method in ('graph', 'lexical', 'embedding')},
+                'embedding_ablation': {'selected_text_version': rerank.PATH_TEXT_VERSION,
+                                       'alternate_text_version': rerank.LEGACY_PATH_TEXT_VERSION,
+                                       'selected_path_ids': ['P1', 'P2'],
+                                       'alternate_path_ids': ['P2', 'P1']}}
+        data['rankings']['llm'] = {'status': 'not_requested', 'path_ids': None}
+        report = evaluate(data, {'P1'})
+        self.assertEqual(report['methods']['embedding']['best_gold_rank'], 1)
+        self.assertEqual(report['methods']['embedding_alternate_text']['best_gold_rank'], 2)
+        self.assertEqual(report['higher_cosine_distractors'][0]['id'], 'P2')
+        self.assertIsNone(report['methods']['llm']['hit_at_1'])
+        with self.assertRaises(ValueError):
+            evaluate(data, {'P3'})
 
     def test_cli_all_four_rankings_and_repeatability(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -239,7 +239,8 @@ concert.Stadium ID = stadium.Stadium ID.
 
 This is formatting of existing names, not generated descriptions. Camel/snake case
 is split without the lexical branch's stemming or stopwords. Database prefixes
-and scores are omitted from embeddings. The text version is `tables_and_joins_v1`.
+and scores are omitted from embeddings. This example is the retained `tables_and_joins_v1` baseline. The default is now
+`bridge_roles_v2`, described below.
 All path texts and the question are encoded together, in batches of 32. Metadata
 records the model directory, library version, device and maximum sequence length.
 The model can truncate long inputs; original serialized text is saved but no
@@ -353,3 +354,54 @@ validation. Four independent rankings are not an end-to-end QA evaluation.
 References checked during implementation:
 [SentenceTransformer loading and encoding](https://sbert.net/docs/package_reference/sentence_transformer/model.html),
 [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat).
+
+## 2026-10-30: bridge-focused path representation and join-chain prompt
+
+The first Spider run reported that some incorrect paths had higher semantic cosine
+than the correct path, although graph joinability kept the correct path first.
+The actual run JSON is not in this checkout; this observation is user-reported,
+not independently recalculated here. It motivates a controlled representation
+ablation, not a claim that v2 improves ranking.
+
+`bridge_roles_v2` is now the default path text. It lists every intermediate table
+first, with its incoming and outgoing join columns, then the full oriented join
+chain. For the singer example:
+
+```text
+Bridge tables: singer in concert (incoming column Singer ID; outgoing column concert ID); concert (incoming column concert ID; outgoing column Stadium ID). Proposed join chain: singer.Singer ID = singer in concert.Singer ID; singer in concert.concert ID = concert.concert ID; concert.Stadium ID = stadium.Stadium ID.
+```
+
+The old `tables_and_joins_v1` serialization is preserved through
+`--embedding-text-version tables_and_joins_v1`. Both versions exclude graph scores
+and database prefixes. V2 changes only the text passed to the same encoder;
+semantic similarity is still not join verification. Repeating bridge columns in
+both sections may introduce a different weighting bias. Long v2 text may exceed
+the encoder's truncation limit; inspect `embedding_metadata.max_seq_length` and
+the saved `embedding_text` before drawing conclusions.
+
+`--embedding-ablation` scores both versions using one loaded local model, identical
+question, candidates, beta and length penalty. It adds top-level
+`embedding_ablation` with selected/alternate versions and ranked IDs, plus
+`alternate_embedding` on each candidate (text, raw cosine, combined score, rank).
+The regular `embedding_*` fields correspond to `--embedding-text-version`. This
+avoids comparing two runs with different search limits or model files. It does
+re-encode the question in each call, so runtime is roughly two embedding passes.
+No result is inferred from the path text alone.
+
+The GPT prompt version is `join_chain_assessment_v2`. It explicitly asks the model
+to inspect each hop and how intermediate tables connect incoming to outgoing
+columns, to flag paths that sound relevant but have weak proposed joins, and to
+state when names are insufficient to prove a join. The request still contains
+only question, table IDs/names and proposed joins; it excludes graph and embedding
+scores. The response schema and validation are unchanged. A model-generated
+assessment is a hypothesis. Whether it actually distinguishes invalid joins
+requires labeled paths and an approved live API run.
+
+`scripts/evaluate_path_ranking.py` reads an existing result JSON and one or more
+researcher-verified gold candidate IDs. It reports the gold rank, hit@1 and
+reciprocal rank for available methods/ablation versions, and lists non-gold paths
+whose raw cosine exceeds the best gold cosine. It never calls models or APIs.
+Gold IDs are run-local, so annotate each file independently and verify the
+full column joins before publication. The report is a per-question diagnostic,
+not a population-level accuracy estimate. It does not mark high-cosine paths
+invalid on its own; that judgment comes from the supplied annotations.

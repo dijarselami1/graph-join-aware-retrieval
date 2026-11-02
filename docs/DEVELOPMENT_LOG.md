@@ -151,3 +151,23 @@ Remaining work: provision or identify the existing compatible Jubail model/env,
 run real offline semantic comparison, obtain approval before live API testing,
 then annotate/evaluate held-out queries and tune weights. Semantic caching,
 execution validation and combined semantic+LLM cascades remain proposed work.
+
+
+## 2026-10-30 — path representation and join-chain assessment
+
+The reported Spider observation was that graph joinability kept the correct route
+first despite some incorrect routes having higher semantic cosine. The original
+result JSON was unavailable locally, so no numeric Spider result was added.
+
+Changed `scripts/path_rerankers.py` to retain v1 path text, default to bridge-focused
+v2 text, and ask GPT to inspect incoming/outgoing columns at each bridge. Changed
+`scripts/query_driven_paths.py` to select the text version and run both versions
+in one optional offline ablation. Added `scripts/evaluate_path_ranking.py` for
+annotated per-question rankings and high-cosine distractor reports. Extended
+`tests/test_path_rerankers.py` for text versions, ablation JSON, prompt content
+and report validation. Updated README, retrieval design and experiment guidance.
+The RF graph, graph-only and lexical scores, embedding mixture equation, and
+cross-database traversal remain unchanged. No model or API call was made.
+Verification: 33 offline unit tests passed; Python sources compiled and
+`git diff --check` found no whitespace errors. The new tests use controlled
+vectors and mocked HTTP, so they establish behavior, not model quality.

@@ -278,3 +278,34 @@ success rate, failure rate and token usage. Report similarity distributions befo
 assuming graph and embedding scores are calibrated. Test source-name and
 presentation-order effects in the prompt. A combined embedding+GPT cascade is
 future work, not part of this independent-method comparison.
+
+
+## 2026-10-30 path-text ablation and validity evaluation
+
+The user reports that, on their actual Spider graph run, the correct path ranked
+first overall while some incorrect candidates had higher embedding similarity.
+That result file was not present in this checkout, so exact scores, ranks, input
+checksum and candidate identities have not been verified here. Do not count the
+statement as a measured v1/v2 comparison.
+
+The next controlled experiment is to run the same candidate generation once with
+`--embedding-ablation`. Compare `tables_and_joins_v1` and `bridge_roles_v2` on
+identical candidates, model, beta and length penalty. Before assessing an LLM,
+annotate each candidate as acceptable, invalid join, or uncertain using actual
+column-level evidence and, where possible, join execution/value overlap.
+Semantically matching names alone are not a gold standard for join validity.
+
+Use `python scripts/evaluate_path_ranking.py --result <result.json> --gold-id Pn`
+for a per-question report. The diagnostic lists non-gold paths with higher raw
+cosine than the gold path and reports ranks for graph, lexical, embedding, LLM
+and both text versions when available. Multiple acceptable IDs are supported.
+This reporting script does no inference or network access. The accepted IDs must
+be re-annotated for each run because graph-search IDs are local to that result.
+
+For a future approved GPT experiment, use the same candidates and compare
+`join_chain_assessment_v2` against the retained prompt version only if old live
+responses exist or a deliberate paired run is approved. Record prompt version,
+model response, token usage, abstentions and failures. Evaluate whether the LLM
+ranks valid joins above high-cosine invalid distractors and whether its stated
+join-chain reasons cite actual columns. Do not treat a plausible explanation as
+verification. This task made no live API call and measured no v2 model gain.

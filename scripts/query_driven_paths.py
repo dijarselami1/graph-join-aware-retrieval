@@ -14,10 +14,12 @@ import sys
 
 if __package__:
     from .path_rerankers import (LocalSentenceEncoder, rank_with_embeddings,
-                                 select_with_llm, ranking_comparison)
+                                 select_with_llm, ranking_comparison,
+                                 PATH_TEXT_VERSION, LEGACY_PATH_TEXT_VERSION)
 else:
     from path_rerankers import (LocalSentenceEncoder, rank_with_embeddings,
-                                select_with_llm, ranking_comparison)
+                                select_with_llm, ranking_comparison,
+                                PATH_TEXT_VERSION, LEGACY_PATH_TEXT_VERSION)
 
 
 def read_graph(filename, min_score):
@@ -173,6 +175,11 @@ def main():
     p.add_argument('--embedding-model', help='Existing local SentenceTransformer model directory')
     p.add_argument('--embedding-device', default='cpu')
     p.add_argument('--embedding-weight', type=float, default=0.5)
+    p.add_argument('--embedding-text-version', choices=[PATH_TEXT_VERSION,
+                   LEGACY_PATH_TEXT_VERSION], default=PATH_TEXT_VERSION,
+                   help='Path representation; v1 reproduces the previous embedding baseline')
+    p.add_argument('--embedding-ablation', action='store_true',
+                   help='Score both v1 and v2 path texts using one local model and candidate set')
     p.add_argument('--llm', action='store_true', help='Explicitly enable a paid gpt-4o-mini ranking/selection request')
     p.add_argument('--output', default='results/query_path_demo.json')
     args = p.parse_args()
@@ -180,8 +187,9 @@ def main():
         p.error('--ranking llm requires explicit --llm')
     if not math.isfinite(args.embedding_weight) or not 0 <= args.embedding_weight <= 1:
         p.error('--embedding-weight must be finite and between 0 and 1')
-    use_embeddings = args.compare or args.ranking == 'embedding'
+    use_embeddings = args.compare or args.ranking == 'embedding' or args.embedding_ablation
     embedding_metadata = None
+    ablation = None
     try:
         graph = read_graph(args.edges, args.min_score)
         paths, truncated = candidate_paths(graph, args.seed_a, args.seed_b,
@@ -191,9 +199,30 @@ def main():
                            args.length_penalty, 'graph')
         if use_embeddings and paths:
             encoder = LocalSentenceEncoder(args.embedding_model, args.embedding_device)
+            graph_candidates = paths
             paths = rank_with_embeddings(args.question, paths, encoder,
-                                         args.embedding_weight, args.length_penalty)
-            embedding_metadata = encoder.metadata
+                                         args.embedding_weight, args.length_penalty,
+                                         args.embedding_text_version)
+            embedding_metadata = dict(encoder.metadata)
+            embedding_metadata['path_text_version'] = args.embedding_text_version
+            if args.embedding_ablation:
+                other_version = (LEGACY_PATH_TEXT_VERSION if
+                                 args.embedding_text_version == PATH_TEXT_VERSION
+                                 else PATH_TEXT_VERSION)
+                alternate = rank_with_embeddings(args.question, graph_candidates, encoder,
+                                                 args.embedding_weight, args.length_penalty,
+                                                 other_version)
+                alternate_by_id = {item['id']: item for item in alternate}
+                for path in paths:
+                    other = alternate_by_id[path['id']]
+                    path['alternate_embedding'] = {
+                        'text_version': other_version, 'text': other['embedding_text'],
+                        'cosine': other['embedding_cosine'],
+                        'score': other['embedding_score'], 'rank': other['embedding_rank']}
+                ablation = {'selected_text_version': args.embedding_text_version,
+                            'alternate_text_version': other_version,
+                            'selected_path_ids': [item['id'] for item in paths],
+                            'alternate_path_ids': [item['id'] for item in alternate]}
     except (ValueError, OSError, KeyError, RuntimeError) as exc:
         p.error(str(exc))
     data = {'schema_version': 2, 'question': args.question,
@@ -209,8 +238,11 @@ def main():
                            'compare': args.compare, 'embedding_weight': args.embedding_weight,
                            'embedding_model': args.embedding_model,
                            'embedding_device': args.embedding_device,
+                           'embedding_text_version': args.embedding_text_version,
+                           'embedding_ablation': args.embedding_ablation,
                            'llm_requested': args.llm},
             'embedding_metadata': embedding_metadata,
+            'embedding_ablation': ablation,
             'llm_selection': None}
     llm_status = 'not_requested'
     if args.llm:
